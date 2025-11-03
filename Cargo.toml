@@ -2,6 +2,13 @@
 name = "channel-protocol"
 version = "0.1.0"
 edition = "2024"
+description = "Enable function-based communication instead of enum message sending. All based on channels."
+license = "MIT"
+documentation = "https://docs.rs/channel-protocol"
+repository = "https://github.com/sub07/channel-protocol"
+keywords = ["channels", "communication", "functions", "thread", "sync"]
+homepage = "https://github.com/sub07/channel-protocol"
+
 
 [lib]
 proc-macro = true
