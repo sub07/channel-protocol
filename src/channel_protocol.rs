@@ -76,11 +76,6 @@ impl Parse for FnArg {
         let ident: syn::Ident = input.parse()?;
         let _: syn::Token![:] = input.parse()?;
         let ty: syn::Type = input.parse()?;
-        let _: Option<syn::Token![,]> = if input.peek(syn::Token![,]) {
-            Some(input.parse()?)
-        } else {
-            None
-        };
         Ok(Self { ident, ty })
     }
 }

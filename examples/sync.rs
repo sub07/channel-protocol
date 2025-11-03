@@ -1,10 +1,11 @@
-use std::{sync::mpsc::Receiver, thread};
+use std::{sync::mpsc::Receiver, thread, time::Duration};
 
 use channel_protocol::channel_protocol;
 
 #[channel_protocol]
 trait CounterManager {
     fn get_and_inc(i: i32) -> i32;
+    fn inc_and_mul(add: i32, mul: i32) -> i32;
     fn inc(i: i32);
     fn dec(i: i32);
     fn reset();
@@ -41,6 +42,15 @@ fn manager_thread(
             CounterManagerMessage::GetAndInc { i, return_sender } => {
                 return_sender.send(counter).unwrap();
                 counter += i;
+            }
+            CounterManagerMessage::IncAndMul {
+                add,
+                mul,
+                return_sender,
+            } => {
+                counter += add;
+                counter *= mul;
+                return_sender.send(counter).unwrap();
             }
         }
         if prev_counter != counter {
@@ -89,4 +99,8 @@ fn main() {
     assert_eq!(10, counter_client.get());
     counter_client.inc(5); // This should trigger the "multiple of 5" message
     assert_eq!(15, counter_client.get());
+    counter_client.inc_and_mul(5, 2); // This should trigger the "multiple of 5" message
+    assert_eq!(40, counter_client.get());
+
+    thread::sleep(Duration::from_millis(1000));
 }
