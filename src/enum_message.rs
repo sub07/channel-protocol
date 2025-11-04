@@ -33,6 +33,7 @@ impl ToTokens for MessageStructRenderer<'_> {
             .collect::<Punctuated<_, Comma>>();
 
         tokens.extend(quote! {
+            #[derive(Debug)]
             struct #struct_name {
                 #fields
             }
@@ -91,6 +92,7 @@ impl ToTokens for MessageEnumRenderer<'_> {
         let message_enum_name = name(&self.root.ident);
 
         tokens.extend(quote! {
+            #[derive(Debug)]
             #vis enum #message_enum_name {
                 #variants
             }
