@@ -60,6 +60,19 @@ impl Parse for TraitItem {
     }
 }
 
+impl ToTokens for TraitItem {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self {
+            ident,
+            args,
+            output,
+        } = self;
+        tokens.extend(quote! {
+            fn #ident(#args) #output;
+        });
+    }
+}
+
 #[derive(Debug)]
 pub struct FnArg {
     pub ident: syn::Ident,
@@ -98,8 +111,18 @@ pub fn build(item: TokenStream) -> TokenStream {
     let message_enum = enum_message::build(&root);
     let client = client::build(&root);
 
-    quote! {
+    let mut base = quote! {
         #message_enum
         #client
+    };
+
+    #[cfg(feature = "handler")]
+    {
+        let handler = crate::handler::build(&root);
+        base.extend(quote! {
+            #handler
+        });
     }
+
+    base
 }

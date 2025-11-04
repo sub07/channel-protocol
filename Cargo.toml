@@ -20,3 +20,10 @@ syn = { version = "2", features = ["extra-traits"] }
 itertools = "0"
 convert_case = "0.8.0"
 oneshot = { version = "0.1.11", features = ["std"], default-features = false }
+
+[dev-dependencies]
+winit = "0.30"
+
+[features]
+default = ["handler"]
+handler = []

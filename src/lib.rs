@@ -10,6 +10,8 @@
 mod channel_protocol;
 mod client;
 mod enum_message;
+#[cfg(feature = "handler")]
+mod handler;
 
 use proc_macro::TokenStream;
 /// Expect a trait definition as input and generate a channel protocol based on it.
