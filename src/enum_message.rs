@@ -68,12 +68,17 @@ pub fn name(ident: &Ident) -> Ident {
     format_ident!("{ident}Message")
 }
 
-pub fn build(Root { ident, items, .. }: &Root) -> TokenStream {
+pub fn build(
+    Root {
+        ident, items, vis, ..
+    }: &Root,
+) -> TokenStream {
     let enum_name = name(ident);
     let variants = variants(items);
 
     quote! {
-        enum #enum_name {
+        #[derive(Debug)]
+        #vis enum #enum_name {
             #(#variants),*
         }
     }
