@@ -1,14 +1,9 @@
+use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::{parse::Parse, punctuated::Punctuated};
+use quote::{ToTokens, format_ident, quote};
+use syn::{Ident, parse::Parse, punctuated::Punctuated};
 
 use crate::{client, enum_message};
-
-pub const RETURN_FIELD_NAME: &str = "return_sender";
-
-pub fn return_field_ident() -> syn::Ident {
-    syn::Ident::new(RETURN_FIELD_NAME, proc_macro2::Span::call_site())
-}
 
 /*
 trait CounterManager {
@@ -87,6 +82,13 @@ impl ToTokens for FnArg {
             #ident: #ty
         });
     }
+}
+
+pub fn message_struct_name(item: &TraitItem) -> Ident {
+    format_ident!(
+        "{}ParamMessage",
+        item.ident.to_string().to_case(Case::Pascal)
+    )
 }
 
 pub fn build(item: TokenStream) -> TokenStream {

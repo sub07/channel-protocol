@@ -27,30 +27,26 @@ fn manager_thread(
     for message in rx {
         prev_counter = counter;
         match message {
-            CounterManagerMessage::Inc { i } => {
+            CounterManagerMessage::Inc(IncParamMessage { i }) => {
                 counter += i;
             }
-            CounterManagerMessage::Dec { i } => {
+            CounterManagerMessage::Dec(DecParamMessage { i }) => {
                 counter -= i;
             }
             CounterManagerMessage::Reset => {
                 counter = 0;
             }
-            CounterManagerMessage::Get { return_sender } => {
-                return_sender.send(counter).unwrap();
+            CounterManagerMessage::Get(ret) => {
+                ret.send(counter).unwrap();
             }
-            CounterManagerMessage::GetAndInc { i, return_sender } => {
-                return_sender.send(counter).unwrap();
+            CounterManagerMessage::GetAndInc(GetAndIncParamMessage { i }, ret) => {
+                ret.send(counter).unwrap();
                 counter += i;
             }
-            CounterManagerMessage::IncAndMul {
-                add,
-                mul,
-                return_sender,
-            } => {
+            CounterManagerMessage::IncAndMul(IncAndMulParamMessage { add, mul }, ret) => {
                 counter += add;
                 counter *= mul;
-                return_sender.send(counter).unwrap();
+                ret.send(counter).unwrap();
             }
         }
         if prev_counter != counter {
@@ -77,7 +73,7 @@ fn main() {
                 CounterOutgoingMessage::Reached10 => {
                     println!("Counter reached 10!");
                 }
-                CounterOutgoingMessage::MultipleOf5 { val } => {
+                CounterOutgoingMessage::MultipleOf5(MultipleOf5ParamMessage { val }) => {
                     println!("Counter is multiple of 5: {val}");
                 }
             }

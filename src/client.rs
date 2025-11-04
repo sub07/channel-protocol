@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use syn::Ident;
 
 use crate::{
-    channel_protocol::{Root, TraitItem, return_field_ident},
+    channel_protocol::{Root, TraitItem, message_struct_name},
     enum_message,
 };
 
@@ -21,15 +21,12 @@ fn item_to_fn(
     let has_output = matches!(output, syn::ReturnType::Type(_, _));
     let has_arguments = !item.args.is_empty();
     let message_enum_ident = format_ident!("{}", ident.to_string().to_case(Case::Pascal));
-    let enum_message_reserved_field = return_field_ident();
     match (has_arguments, has_output) {
         (false, true) => {
             quote! {
                 pub fn #ident(&self) #output {
                     let (tx, rx) = oneshot::channel();
-                    let message = #enum_message_name::#message_enum_ident {
-                        #enum_message_reserved_field: tx,
-                    };
+                    let message = #enum_message_name::#message_enum_ident(tx);
                     self.0.send(message).unwrap();
                     rx.recv().unwrap()
                 }
@@ -45,24 +42,25 @@ fn item_to_fn(
         }
         (true, false) => {
             let fields = args.iter().map(|arg| &arg.ident).collect_vec();
+            let message_struct_name = message_struct_name(item);
             quote! {
                 pub fn #ident(&self, #args) {
-                    let message = #enum_message_name::#message_enum_ident {
-                        #(#fields),*
-                    };
+                    let message = #enum_message_name::#message_enum_ident(#message_struct_name {
+                        #(#fields,)*
+                    });
                     self.0.send(message).unwrap();
                 }
             }
         }
         (true, true) => {
             let fields = args.iter().map(|arg| &arg.ident).collect_vec();
+            let message_struct_name = message_struct_name(item);
             quote! {
                 pub fn #ident(&self, #args) #output {
                     let (tx, rx) = oneshot::channel();
-                    let message = #enum_message_name::#message_enum_ident {
+                    let message = #enum_message_name::#message_enum_ident(#message_struct_name {
                         #(#fields,)*
-                        #enum_message_reserved_field: tx,
-                    };
+                    }, tx);
                     self.0.send(message).unwrap();
                     rx.recv().unwrap()
                 }
