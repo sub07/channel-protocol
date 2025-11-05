@@ -3,7 +3,7 @@ use std::{sync::mpsc::Receiver, thread, time::Duration};
 use channel_protocol::channel_protocol;
 
 #[channel_protocol]
-trait CounterManager {
+trait CounterInputProtocol {
     fn get_and_inc(i: i32) -> i32;
     fn inc_and_mul(add: i32, mul: i32) -> i32;
     fn inc(i: i32);
@@ -13,67 +13,105 @@ trait CounterManager {
 }
 
 #[channel_protocol]
-trait CounterOutgoing {
+trait CounterOutputProtocol {
     fn reached_10();
     fn multiple_of_5(val: i32);
 }
 
-fn manager_thread(
-    counter_outgoing_client: CounterOutgoingClient,
-    rx: Receiver<CounterManagerMessage>,
-) {
-    let mut prev_counter = 0;
-    let mut counter = 0;
-    for message in rx {
-        prev_counter = counter;
-        match message {
-            CounterManagerMessage::Inc(IncParamMessage { i }) => {
-                counter += i;
-            }
-            CounterManagerMessage::Dec(DecParamMessage { i }) => {
-                counter -= i;
-            }
-            CounterManagerMessage::Reset => {
-                counter = 0;
-            }
-            CounterManagerMessage::Get(ret) => {
-                ret.send(counter).unwrap();
-            }
-            CounterManagerMessage::GetAndInc(GetAndIncParamMessage { i }, ret) => {
-                ret.send(counter).unwrap();
-                counter += i;
-            }
-            CounterManagerMessage::IncAndMul(IncAndMulParamMessage { add, mul }, ret) => {
-                counter += add;
-                counter *= mul;
-                ret.send(counter).unwrap();
-            }
+struct CounterApp {
+    counter: i32,
+    prev_counter: i32,
+}
+
+impl HandleCounterInputProtocol<()> for CounterApp {
+    fn get_and_inc(&mut self, (): (), i: i32) -> i32 {
+        let val = self.counter;
+        self.counter += i;
+        val
+    }
+
+    fn inc_and_mul(&mut self, (): (), add: i32, mul: i32) -> i32 {
+        self.counter += add;
+        self.counter *= mul;
+        self.counter
+    }
+
+    fn inc(&mut self, (): (), i: i32) {
+        self.counter += i;
+    }
+
+    fn dec(&mut self, (): (), i: i32) {
+        self.counter -= i;
+    }
+
+    fn reset(&mut self, (): ()) {
+        self.counter = 0;
+    }
+
+    fn get(&mut self, (): ()) -> i32 {
+        self.counter
+    }
+}
+
+impl CounterApp {
+    pub const fn new() -> Self {
+        Self {
+            counter: 0,
+            prev_counter: 0,
         }
-        if prev_counter != counter {
-            if counter == 10 {
+    }
+
+    pub const fn is_multiple_of_5(&self) -> bool {
+        self.counter % 5 == 0
+    }
+
+    pub const fn has_reached_10(&self) -> bool {
+        self.counter == 10
+    }
+
+    pub const fn has_changed(&self) -> bool {
+        self.counter != self.prev_counter
+    }
+
+    pub const fn save_previous(&mut self) {
+        self.prev_counter = self.counter;
+    }
+}
+
+fn manager_thread(
+    counter_outgoing_client: &CounterOutputProtocolClient,
+    rx: Receiver<CounterInputProtocolMessage>,
+) {
+    let mut app = CounterApp::new();
+    for message in rx {
+        app.save_previous();
+        app.dispatch((), message);
+
+        if app.has_changed() {
+            if app.has_reached_10() {
                 counter_outgoing_client.reached_10();
             }
-            if counter % 5 == 0 {
-                counter_outgoing_client.multiple_of_5(counter);
+            if app.is_multiple_of_5() {
+                counter_outgoing_client.multiple_of_5(app.counter);
             }
         }
     }
 }
 
 fn main() {
-    let (counter_client, counter_manager_rx) = CounterManagerClient::new();
-    let (counter_outgoing_client, counter_outgoing_rx) = CounterOutgoingClient::new();
-    thread::spawn(|| {
-        manager_thread(counter_outgoing_client, counter_manager_rx);
+    let (counter_client, counter_manager_rx) = CounterInputProtocolClient::new();
+    let (counter_outgoing_client, counter_outgoing_rx) = CounterOutputProtocolClient::new();
+    thread::spawn(move || {
+        manager_thread(&counter_outgoing_client, counter_manager_rx);
     });
 
     thread::spawn(|| {
         for message in counter_outgoing_rx {
             match message {
-                CounterOutgoingMessage::Reached10 => {
+                CounterOutputProtocolMessage::Reached10 => {
                     println!("Counter reached 10!");
                 }
-                CounterOutgoingMessage::MultipleOf5(MultipleOf5ParamMessage { val }) => {
+                CounterOutputProtocolMessage::MultipleOf5(MultipleOf5ParamMessage { val }) => {
                     println!("Counter is multiple of 5: {val}");
                 }
             }

@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{Ident, parse::Parse, punctuated::Punctuated};
 
-use crate::{client, enum_message};
+use crate::{client, enum_message, handler};
 
 /*
 trait CounterManager {
@@ -60,6 +60,19 @@ impl Parse for TraitItem {
     }
 }
 
+impl ToTokens for TraitItem {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self {
+            ident,
+            args,
+            output,
+        } = self;
+        tokens.extend(quote! {
+            fn #ident(#args) #output;
+        });
+    }
+}
+
 #[derive(Debug)]
 pub struct FnArg {
     pub ident: syn::Ident,
@@ -97,9 +110,11 @@ pub fn build(item: TokenStream) -> TokenStream {
 
     let message_enum = enum_message::build(&root);
     let client = client::build(&root);
+    let handler = handler::build(&root);
 
     quote! {
         #message_enum
         #client
+        #handler
     }
 }
