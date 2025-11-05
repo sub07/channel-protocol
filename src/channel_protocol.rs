@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{Ident, parse::Parse, punctuated::Punctuated};
 
-use crate::{client, enum_message};
+use crate::{client, enum_message, handler};
 
 /*
 trait CounterManager {
@@ -110,19 +110,11 @@ pub fn build(item: TokenStream) -> TokenStream {
 
     let message_enum = enum_message::build(&root);
     let client = client::build(&root);
+    let handler = handler::build(&root);
 
-    let mut base = quote! {
+    quote! {
         #message_enum
         #client
-    };
-
-    #[cfg(feature = "handler")]
-    {
-        let handler = crate::handler::build(&root);
-        base.extend(quote! {
-            #handler
-        });
+        #handler
     }
-
-    base
 }

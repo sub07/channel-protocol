@@ -10,7 +10,6 @@
 mod channel_protocol;
 mod client;
 mod enum_message;
-#[cfg(feature = "handler")]
 mod handler;
 
 use proc_macro::TokenStream;

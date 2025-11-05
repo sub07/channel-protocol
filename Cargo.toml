@@ -9,7 +9,6 @@ repository = "https://github.com/sub07/channel-protocol"
 keywords = ["channels", "communication", "functions", "thread", "sync"]
 homepage = "https://github.com/sub07/channel-protocol"
 
-
 [lib]
 proc-macro = true
 
@@ -23,7 +22,3 @@ oneshot = { version = "0.1.11", features = ["std"], default-features = false }
 
 [dev-dependencies]
 winit = "0.30"
-
-[features]
-default = ["handler"]
-handler = []

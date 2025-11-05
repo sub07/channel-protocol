@@ -18,72 +18,38 @@ trait CounterOutputProtocol {
     fn multiple_of_5(val: i32);
 }
 
-trait HandleCounterInputProtocol {
-    fn get_and_inc(&mut self, i: i32) -> i32;
-    fn inc_and_mul(&mut self, add: i32, mul: i32) -> i32;
-    fn inc(&mut self, i: i32);
-    fn dec(&mut self, i: i32);
-    fn reset(&mut self);
-    fn get(&mut self) -> i32;
-}
-
 struct CounterApp {
     counter: i32,
     prev_counter: i32,
 }
 
-impl HandleCounterInputProtocol for CounterApp {
-    fn get_and_inc(&mut self, i: i32) -> i32 {
+impl HandleCounterInputProtocol<()> for CounterApp {
+    fn get_and_inc(&mut self, (): (), i: i32) -> i32 {
         let val = self.counter;
         self.counter += i;
         val
     }
 
-    fn inc_and_mul(&mut self, add: i32, mul: i32) -> i32 {
+    fn inc_and_mul(&mut self, (): (), add: i32, mul: i32) -> i32 {
         self.counter += add;
         self.counter *= mul;
         self.counter
     }
 
-    fn inc(&mut self, i: i32) {
+    fn inc(&mut self, (): (), i: i32) {
         self.counter += i;
     }
 
-    fn dec(&mut self, i: i32) {
+    fn dec(&mut self, (): (), i: i32) {
         self.counter -= i;
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self, (): ()) {
         self.counter = 0;
     }
 
-    fn get(&mut self) -> i32 {
+    fn get(&mut self, (): ()) -> i32 {
         self.counter
-    }
-}
-
-impl CounterApp {
-    pub fn dispatch_message(&mut self, message: CounterInputProtocolMessage) {
-        match message {
-            CounterInputProtocolMessage::Inc(IncParamMessage { i }) => {
-                self.inc(i);
-            }
-            CounterInputProtocolMessage::Dec(DecParamMessage { i }) => {
-                self.dec(i);
-            }
-            CounterInputProtocolMessage::Reset => {
-                self.reset();
-            }
-            CounterInputProtocolMessage::Get(ret) => {
-                ret.send(self.get()).unwrap();
-            }
-            CounterInputProtocolMessage::GetAndInc(GetAndIncParamMessage { i }, ret) => {
-                ret.send(self.get_and_inc(i)).unwrap();
-            }
-            CounterInputProtocolMessage::IncAndMul(IncAndMulParamMessage { add, mul }, ret) => {
-                ret.send(self.inc_and_mul(add, mul)).unwrap();
-            }
-        }
     }
 }
 
@@ -113,13 +79,13 @@ impl CounterApp {
 }
 
 fn manager_thread(
-    counter_outgoing_client: CounterOutputProtocolClient,
+    counter_outgoing_client: &CounterOutputProtocolClient,
     rx: Receiver<CounterInputProtocolMessage>,
 ) {
     let mut app = CounterApp::new();
     for message in rx {
         app.save_previous();
-        app.dispatch_message(message);
+        app.dispatch((), message);
 
         if app.has_changed() {
             if app.has_reached_10() {
@@ -135,8 +101,8 @@ fn manager_thread(
 fn main() {
     let (counter_client, counter_manager_rx) = CounterInputProtocolClient::new();
     let (counter_outgoing_client, counter_outgoing_rx) = CounterOutputProtocolClient::new();
-    thread::spawn(|| {
-        manager_thread(counter_outgoing_client, counter_manager_rx);
+    thread::spawn(move || {
+        manager_thread(&counter_outgoing_client, counter_manager_rx);
     });
 
     thread::spawn(|| {

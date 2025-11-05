@@ -1,6 +1,7 @@
 use std::{
     sync::mpsc::Receiver,
     thread::{self, JoinHandle},
+    time::Duration,
 };
 
 use channel_protocol::channel_protocol;
@@ -17,6 +18,7 @@ use winit::{
 #[channel_protocol]
 trait WinitInputProtocol {
     fn create_window(title: String, width: u32, height: u32);
+    fn is_window_open() -> bool;
     fn close_window();
     fn set_title(title: String);
     fn resize(width: u32, height: u32);
@@ -25,7 +27,6 @@ trait WinitInputProtocol {
 
 #[channel_protocol]
 trait WinitOutputProtocol {
-    fn on_window_created();
     fn on_window_resized(width: u32, height: u32);
     fn on_key_event(key: KeyCode, is_pressed: bool);
     fn on_text(text: SmolStr);
@@ -37,13 +38,13 @@ struct WinitApp {
     output_client: WinitOutputProtocolClient,
 }
 
-impl WinitApp {
-    pub fn create_window(
+impl HandleWinitInputProtocol<&ActiveEventLoop> for WinitApp {
+    fn create_window(
         &mut self,
+        event_loop: &ActiveEventLoop,
         title: String,
         width: u32,
         height: u32,
-        event_loop: &ActiveEventLoop,
     ) {
         let window = event_loop
             .create_window(
@@ -56,20 +57,28 @@ impl WinitApp {
         self.window = Some(window);
     }
 
-    pub fn close_window(&mut self) {
+    fn is_window_open(&mut self, _: &ActiveEventLoop) -> bool {
+        todo!()
+    }
+
+    fn close_window(&mut self, _: &ActiveEventLoop) {
         self.window.take();
     }
 
-    pub fn set_title(&self, title: &str) {
+    fn set_title(&mut self, _: &ActiveEventLoop, title: String) {
         if let Some(window) = &self.window {
-            window.set_title(title);
+            window.set_title(&title);
         }
     }
 
-    pub fn resize(&self, width: u32, height: u32) {
+    fn resize(&mut self, _: &ActiveEventLoop, width: u32, height: u32) {
         if let Some(window) = &self.window {
             let _ = window.request_inner_size(PhysicalSize::new(width, height));
         }
+    }
+
+    fn teardown(&mut self, event_loop: &ActiveEventLoop) {
+        event_loop.exit();
     }
 }
 
@@ -83,23 +92,7 @@ impl ApplicationHandler<WinitInputProtocolMessage> for WinitApp {
         event_loop: &winit::event_loop::ActiveEventLoop,
         event: WinitInputProtocolMessage,
     ) {
-        match event {
-            WinitInputProtocolMessage::CreateWindow(CreateWindowParamMessage {
-                title,
-                width,
-                height,
-            }) => {
-                self.create_window(title, width, height, event_loop);
-            }
-            WinitInputProtocolMessage::CloseWindow => self.close_window(),
-            WinitInputProtocolMessage::SetTitle(SetTitleParamMessage { title }) => {
-                self.set_title(&title);
-            }
-            WinitInputProtocolMessage::Resize(ResizeParamMessage { width, height }) => {
-                self.resize(width, height);
-            }
-            WinitInputProtocolMessage::Teardown => event_loop.exit(),
-        }
+        self.dispatch(event_loop, event);
         if let Some(window) = &self.window {
             window.request_redraw();
         }
@@ -193,7 +186,6 @@ fn main() {
 
     for message in output_rx {
         match message {
-            WinitOutputProtocolMessage::OnWindowCreated => println!("created"),
             WinitOutputProtocolMessage::OnWindowResized(OnWindowResizedParamMessage {
                 width: new_width,
                 height: new_height,
@@ -211,7 +203,19 @@ fn main() {
                 if is_pressed {
                     match key {
                         KeyCode::Escape => {
+                            println!(
+                                "Closing current window and respawning a new one 2 secs later"
+                            );
                             winit_client.close_window();
+                            let winit_client_clone = winit_client.clone();
+                            thread::spawn(move || {
+                                thread::sleep(Duration::from_secs(2));
+                                winit_client_clone.create_window(
+                                    "Respawed window".into(),
+                                    600,
+                                    600,
+                                );
+                            });
                         }
                         KeyCode::ArrowLeft => {
                             winit_client.resize(width - 100, height);
