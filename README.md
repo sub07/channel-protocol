@@ -1,6 +1,6 @@
 # Channel Protocol
 
-![crate.io](https://img.shields.io/crates/v/channel-protocol?style=for-the-badge&logo=rust&logoColor=white)
+[<img alt="crates.io" src="https://img.shields.io/crates/v/channel-protocol?style=for-the-badge&logo=rust&logoColor=white">](https://crates.io/crates/channel-protocol)
 
 ## What is it ?
 

@@ -5,15 +5,6 @@ use syn::{Ident, parse::Parse, punctuated::Punctuated};
 
 use crate::{client, enum_message, handler};
 
-/*
-trait CounterManager {
-    fn get_and_inc(i: i32) -> i32;
-    fn inc(i: i32);
-    fn dec(i: i32);
-    fn reset();
-    fn get() -> i32;
-}
-*/
 #[derive(Debug)]
 pub struct Root {
     pub vis: syn::Visibility,
