@@ -1,6 +1,6 @@
 [package]
 name = "channel-protocol"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Enable function-based communication instead of enum message sending. All based on channels."
 license = "MIT"
