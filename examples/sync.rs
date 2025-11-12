@@ -23,38 +23,38 @@ struct CounterApp {
     prev_counter: i32,
 }
 
-impl HandleCounterInputProtocol<()> for CounterApp {
-    fn get_and_inc(&mut self, i: i32, (): ()) -> i32 {
+impl HandleCounterInputProtocol for CounterApp {
+    fn get_and_inc(&mut self, i: i32) -> i32 {
         let val = self.counter;
         self.counter += i;
         val
     }
 
-    fn inc_and_mul(&mut self, add: i32, mul: i32, (): ()) -> i32 {
+    fn inc_and_mul(&mut self, add: i32, mul: i32) -> i32 {
         self.counter += add;
         self.counter *= mul;
         self.counter
     }
 
-    fn inc(&mut self, i: i32, (): ()) {
+    fn inc(&mut self, i: i32) {
         self.counter += i;
     }
 
-    fn dec(&mut self, i: i32, (): ()) {
+    fn dec(&mut self, i: i32) {
         self.counter -= i;
     }
 
-    fn reset(&mut self, (): ()) {
+    fn reset(&mut self) {
         self.counter = 0;
     }
 
-    fn get(&mut self, (): ()) -> i32 {
+    fn get(&mut self) -> i32 {
         self.counter
     }
 
-    fn dispatch(&mut self, message: CounterInputProtocolMessage, state: ()) {
+    fn dispatch(&mut self, message: CounterInputProtocolMessage) {
         println!("{message:?}");
-        self._dispatch(message, state);
+        self._dispatch(message);
     }
 }
 
@@ -83,27 +83,6 @@ impl CounterApp {
     }
 }
 
-// impl Debug for CounterInputProtocolMessage {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             Self::GetAndInc(GetAndIncParamMessage { i }, _) => {
-//                 write!(f, "get_and_inc({i}) -> i32")
-//             }
-//             Self::IncAndMul(IncAndMulParamMessage { add, mul }, _) => {
-//                 write!(f, "inc_and_mul({add}, {mul}) -> i32")
-//             }
-//             Self::Inc(IncParamMessage { i }) => {
-//                 write!(f, "inc({i})")
-//             }
-//             Self::Dec(DecParamMessage { i }) => {
-//                 write!(f, "dec({i})")
-//             }
-//             Self::Reset => write!(f, "reset()"),
-//             Self::Get(_) => write!(f, "get() -> i32"),
-//         }
-//     }
-// }
-
 fn manager_thread(
     counter_outgoing_client: &CounterOutputProtocolClient,
     rx: Receiver<CounterInputProtocolMessage>,
@@ -111,7 +90,7 @@ fn manager_thread(
     let mut app = CounterApp::new();
     for message in rx {
         app.save_previous();
-        app.dispatch(message, ());
+        app.dispatch(message);
 
         if app.has_changed() {
             if app.has_reached_10() {

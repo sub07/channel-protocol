@@ -39,7 +39,7 @@ struct WinitApp {
     output_client: WinitOutputProtocolClient,
 }
 
-impl HandleWinitInputProtocol<&ActiveEventLoop> for WinitApp {
+impl HandleWinitInputProtocolWithState<&ActiveEventLoop> for WinitApp {
     fn create_window(
         &mut self,
         title: String,
@@ -94,7 +94,7 @@ impl ApplicationHandler<WinitInputProtocolMessage> for WinitApp {
         event: WinitInputProtocolMessage,
     ) {
         println!("{event:?}");
-        self.dispatch(event, event_loop);
+        self.dispatch_with_state(event, event_loop);
     }
 
     fn window_event(
