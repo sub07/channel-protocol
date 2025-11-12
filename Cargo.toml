@@ -1,6 +1,6 @@
 [package]
 name = "channel-protocol"
-version = "0.1.6"
+version = "0.2.0"
 edition = "2024"
 description = "Enable function-based communication instead of enum message sending. All based on channels."
 license = "MIT"
@@ -17,8 +17,8 @@ quote = "1"
 proc-macro2 = "1"
 syn = { version = "2", features = ["extra-traits"] }
 itertools = "0"
-convert_case = "0.8.0"
-oneshot = { version = "0.1.11", features = ["std"], default-features = false }
+convert_case = "0.8"
+oneshot = { version = "0.1", features = ["std"], default-features = false }
 
 [dev-dependencies]
 winit = "0.30"
