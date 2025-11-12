@@ -42,10 +42,10 @@ struct WinitApp {
 impl HandleWinitInputProtocol<&ActiveEventLoop> for WinitApp {
     fn create_window(
         &mut self,
-        event_loop: &ActiveEventLoop,
         title: String,
         width: u32,
         height: u32,
+        event_loop: &ActiveEventLoop,
     ) {
         let window = event_loop
             .create_window(
@@ -66,13 +66,13 @@ impl HandleWinitInputProtocol<&ActiveEventLoop> for WinitApp {
         self.window.take();
     }
 
-    fn set_title(&mut self, _: &ActiveEventLoop, title: String) {
+    fn set_title(&mut self, title: String, _: &ActiveEventLoop) {
         if let Some(window) = &self.window {
             window.set_title(&title);
         }
     }
 
-    fn resize(&mut self, _: &ActiveEventLoop, width: u32, height: u32) {
+    fn resize(&mut self, width: u32, height: u32, _: &ActiveEventLoop) {
         if let Some(window) = &self.window {
             let _ = window.request_inner_size(PhysicalSize::new(width, height));
         }
@@ -94,7 +94,7 @@ impl ApplicationHandler<WinitInputProtocolMessage> for WinitApp {
         event: WinitInputProtocolMessage,
     ) {
         println!("{event:?}");
-        self.dispatch(event_loop, event);
+        self.dispatch(event, event_loop);
     }
 
     fn window_event(

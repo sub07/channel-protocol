@@ -50,8 +50,14 @@ impl ToTokens for HandleProtocolMessageRenderer<'_> {
             output,
         } = self.message;
 
+        let args = if args.is_empty() {
+            quote! {}
+        } else {
+            quote! { , #args }
+        };
+
         tokens.extend(quote! {
-            fn #ident(&mut self, state: S, #args) #output;
+            fn #ident(&mut self #args, state: S) #output;
         });
     }
 }
@@ -71,14 +77,22 @@ impl ToTokens for DispatchMethodRenderer<'_> {
         });
 
         tokens.extend(quote! {
-            fn dispatch(
+            fn _dispatch(
                 &mut self,
-                state: S,
                 message: #enum_message_ident,
+                state: S,
             ) {
                 match message {
                     #( #dispatch_arms )*
                 }
+            }
+
+            fn dispatch(
+                &mut self,
+                message: #enum_message_ident,
+                state: S,
+            ) {
+                self._dispatch(message, state);
             }
         });
     }
@@ -121,7 +135,7 @@ impl ToTokens for DispatchMessageRenderer<'_, '_> {
 
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident(#message_struct_ident { #arg_idents }) => {
-                        self.#ident(state, #arg_idents);
+                        self.#ident(#arg_idents, state);
                     }
                 });
             }
@@ -133,7 +147,7 @@ impl ToTokens for DispatchMessageRenderer<'_, '_> {
                 let message_struct_ident = self.message.struct_ident();
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident(#message_struct_ident { #arg_idents }, tx) => {
-                        let ret = self.#ident(state, #arg_idents);
+                        let ret = self.#ident(#arg_idents, state);
                         tx.send(ret).unwrap();
                     }
                 });

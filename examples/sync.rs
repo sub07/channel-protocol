@@ -24,23 +24,23 @@ struct CounterApp {
 }
 
 impl HandleCounterInputProtocol<()> for CounterApp {
-    fn get_and_inc(&mut self, (): (), i: i32) -> i32 {
+    fn get_and_inc(&mut self, i: i32, (): ()) -> i32 {
         let val = self.counter;
         self.counter += i;
         val
     }
 
-    fn inc_and_mul(&mut self, (): (), add: i32, mul: i32) -> i32 {
+    fn inc_and_mul(&mut self, add: i32, mul: i32, (): ()) -> i32 {
         self.counter += add;
         self.counter *= mul;
         self.counter
     }
 
-    fn inc(&mut self, (): (), i: i32) {
+    fn inc(&mut self, i: i32, (): ()) {
         self.counter += i;
     }
 
-    fn dec(&mut self, (): (), i: i32) {
+    fn dec(&mut self, i: i32, (): ()) {
         self.counter -= i;
     }
 
@@ -50,6 +50,11 @@ impl HandleCounterInputProtocol<()> for CounterApp {
 
     fn get(&mut self, (): ()) -> i32 {
         self.counter
+    }
+
+    fn dispatch(&mut self, message: CounterInputProtocolMessage, state: ()) {
+        println!("{message:?}");
+        self._dispatch(message, state);
     }
 }
 
@@ -105,9 +110,8 @@ fn manager_thread(
 ) {
     let mut app = CounterApp::new();
     for message in rx {
-        println!("{message:?}");
         app.save_previous();
-        app.dispatch((), message);
+        app.dispatch(message, ());
 
         if app.has_changed() {
             if app.has_reached_10() {
