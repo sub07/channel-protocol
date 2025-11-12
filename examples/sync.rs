@@ -1,4 +1,4 @@
-use std::{sync::mpsc::Receiver, thread, time::Duration};
+use std::{fmt::Debug, sync::mpsc::Receiver, thread, time::Duration};
 
 use channel_protocol::channel_protocol;
 
@@ -78,12 +78,34 @@ impl CounterApp {
     }
 }
 
+// impl Debug for CounterInputProtocolMessage {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             Self::GetAndInc(GetAndIncParamMessage { i }, _) => {
+//                 write!(f, "get_and_inc({i}) -> i32")
+//             }
+//             Self::IncAndMul(IncAndMulParamMessage { add, mul }, _) => {
+//                 write!(f, "inc_and_mul({add}, {mul}) -> i32")
+//             }
+//             Self::Inc(IncParamMessage { i }) => {
+//                 write!(f, "inc({i})")
+//             }
+//             Self::Dec(DecParamMessage { i }) => {
+//                 write!(f, "dec({i})")
+//             }
+//             Self::Reset => write!(f, "reset()"),
+//             Self::Get(_) => write!(f, "get() -> i32"),
+//         }
+//     }
+// }
+
 fn manager_thread(
     counter_outgoing_client: &CounterOutputProtocolClient,
     rx: Receiver<CounterInputProtocolMessage>,
 ) {
     let mut app = CounterApp::new();
     for message in rx {
+        println!("{message:?}");
         app.save_previous();
         app.dispatch((), message);
 

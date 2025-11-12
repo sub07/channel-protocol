@@ -11,10 +11,11 @@ mod channel_protocol;
 mod client;
 mod enum_message;
 mod handler;
+mod render;
 
 use proc_macro::TokenStream;
 /// Expect a trait definition as input and generate a channel protocol based on it.
 #[proc_macro_attribute]
-pub fn channel_protocol(_attr_content: TokenStream, item: TokenStream) -> TokenStream {
-    channel_protocol::build(item.into()).into()
+pub fn channel_protocol(_attr_content: TokenStream, input: TokenStream) -> TokenStream {
+    channel_protocol::build(input.into()).into()
 }

@@ -1,48 +1,54 @@
 use convert_case::Casing;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{Ident, ReturnType, punctuated::Punctuated, token::Comma};
+use syn::{Ident, punctuated::Punctuated, token::Comma};
 
 use crate::{
-    channel_protocol::{Root, TraitItem, message_struct_name},
-    enum_message,
+    channel_protocol::{Protocol, ProtocolMessage},
+    render::message::MessageSignatureKind,
 };
 
 struct HandleTraitRenderer<'a> {
-    root: &'a Root,
+    protocol: &'a Protocol,
 }
 
 impl ToTokens for HandleTraitRenderer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Root { vis, ident, items } = self.root;
+        let Protocol {
+            vis,
+            ident,
+            messages,
+        } = self.protocol;
         let handler_ident = name(ident);
-        let items = items
+        let messages = messages
             .iter()
-            .map(|item| HandleTraitItemRenderer { item })
+            .map(|message| HandleProtocolMessageRenderer { message })
             .collect::<Vec<_>>();
 
-        let dispatch_method = DispatchMethodRenderer { root: self.root };
+        let dispatch_method = DispatchMethodRenderer {
+            protocol: self.protocol,
+        };
 
         tokens.extend(quote! {
             #vis trait #handler_ident <S = ()> {
-                #( #items )*
+                #( #messages )*
                 #dispatch_method
             }
         });
     }
 }
 
-struct HandleTraitItemRenderer<'a> {
-    item: &'a TraitItem,
+struct HandleProtocolMessageRenderer<'a> {
+    message: &'a ProtocolMessage,
 }
 
-impl ToTokens for HandleTraitItemRenderer<'_> {
+impl ToTokens for HandleProtocolMessageRenderer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let TraitItem {
+        let ProtocolMessage {
             ident,
             args,
             output,
-        } = self.item;
+        } = self.message;
 
         tokens.extend(quote! {
             fn #ident(&mut self, state: S, #args) #output;
@@ -51,16 +57,16 @@ impl ToTokens for HandleTraitItemRenderer<'_> {
 }
 
 struct DispatchMethodRenderer<'a> {
-    root: &'a Root,
+    protocol: &'a Protocol,
 }
 
 impl ToTokens for DispatchMethodRenderer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Root { ident, items, .. } = self.root;
-        let enum_message_ident = enum_message::name(ident);
+        let Protocol { messages, .. } = self.protocol;
+        let enum_message_ident = self.protocol.message_enum_ident();
 
-        let dispatch_arms = items.iter().map(|item| DispatchItemRenderer {
-            item,
+        let dispatch_arms = messages.iter().map(|message| DispatchMessageRenderer {
+            message,
             enum_message_ident: &enum_message_ident,
         });
 
@@ -78,34 +84,27 @@ impl ToTokens for DispatchMethodRenderer<'_> {
     }
 }
 
-struct DispatchItemRenderer<'a, 'b> {
-    item: &'a TraitItem,
+struct DispatchMessageRenderer<'a, 'b> {
+    message: &'a ProtocolMessage,
     enum_message_ident: &'b Ident,
 }
 
-impl ToTokens for DispatchItemRenderer<'_, '_> {
+impl ToTokens for DispatchMessageRenderer<'_, '_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let TraitItem {
-            ident,
-            args,
-            output,
-        } = self.item;
+        let ProtocolMessage { ident, args, .. } = self.message;
         let enum_message_ident = self.enum_message_ident;
         let message_variant_ident =
             quote::format_ident!("{}", ident.to_string().to_case(convert_case::Case::Pascal));
 
-        let has_return = matches!(output, ReturnType::Type(_, _));
-        let has_arguments = !args.is_empty();
-
-        match (has_arguments, has_return) {
-            (false, false) => {
+        match self.message.signature_kind() {
+            MessageSignatureKind::None => {
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident => {
                         self.#ident(state);
                     }
                 });
             }
-            (false, true) => {
+            MessageSignatureKind::OnlyReturn => {
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident(tx) => {
                         let ret = self.#ident(state);
@@ -113,12 +112,12 @@ impl ToTokens for DispatchItemRenderer<'_, '_> {
                     }
                 });
             }
-            (true, false) => {
+            MessageSignatureKind::OnlyParam => {
                 let arg_idents = args
                     .iter()
                     .map(|arg| &arg.ident)
                     .collect::<Punctuated<_, Comma>>();
-                let message_struct_ident = message_struct_name(self.item);
+                let message_struct_ident = self.message.struct_ident();
 
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident(#message_struct_ident { #arg_idents }) => {
@@ -126,12 +125,12 @@ impl ToTokens for DispatchItemRenderer<'_, '_> {
                     }
                 });
             }
-            (true, true) => {
+            MessageSignatureKind::ParamReturn => {
                 let arg_idents = args
                     .iter()
                     .map(|arg| &arg.ident)
                     .collect::<Punctuated<_, Comma>>();
-                let message_struct_ident = message_struct_name(self.item);
+                let message_struct_ident = self.message.struct_ident();
                 tokens.extend(quote! {
                     #enum_message_ident::#message_variant_ident(#message_struct_ident { #arg_idents }, tx) => {
                         let ret = self.#ident(state, #arg_idents);
@@ -149,8 +148,8 @@ fn name(ident: &Ident) -> Ident {
     quote::format_ident!("Handle{}", ident)
 }
 
-pub fn build(root: &Root) -> TokenStream {
-    let handle_trait = HandleTraitRenderer { root };
+pub fn build(protocol: &Protocol) -> TokenStream {
+    let handle_trait = HandleTraitRenderer { protocol };
     quote! {
         #handle_trait
     }

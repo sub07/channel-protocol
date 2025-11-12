@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     sync::mpsc::Receiver,
     thread::{self, JoinHandle},
     time::Duration,
@@ -92,10 +93,8 @@ impl ApplicationHandler<WinitInputProtocolMessage> for WinitApp {
         event_loop: &winit::event_loop::ActiveEventLoop,
         event: WinitInputProtocolMessage,
     ) {
+        println!("{event:?}");
         self.dispatch(event_loop, event);
-        if let Some(window) = &self.window {
-            window.request_redraw();
-        }
     }
 
     fn window_event(

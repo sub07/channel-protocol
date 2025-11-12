@@ -1,40 +1,43 @@
-use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
-use syn::{Ident, parse::Parse, punctuated::Punctuated};
+use quote::{ToTokens, quote};
+use syn::{parse::Parse, punctuated::Punctuated};
 
 use crate::{client, enum_message, handler};
 
 #[derive(Debug)]
-pub struct Root {
+pub struct Protocol {
     pub vis: syn::Visibility,
     pub ident: syn::Ident,
-    pub items: Vec<TraitItem>,
+    pub messages: Vec<ProtocolMessage>,
 }
 
-impl Parse for Root {
+impl Parse for Protocol {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let vis: syn::Visibility = input.parse()?;
         let _: syn::Token![trait] = input.parse()?;
         let ident: syn::Ident = input.parse()?;
         let content;
         let _ = syn::braced!(content in input);
-        let mut items = Vec::new();
+        let mut messages = Vec::new();
         while !content.is_empty() {
-            items.push(content.parse()?);
+            messages.push(content.parse()?);
         }
-        Ok(Self { vis, ident, items })
+        Ok(Self {
+            vis,
+            ident,
+            messages,
+        })
     }
 }
 
 #[derive(Debug)]
-pub struct TraitItem {
+pub struct ProtocolMessage {
     pub ident: syn::Ident,
-    pub args: syn::punctuated::Punctuated<FnArg, syn::Token![,]>,
+    pub args: syn::punctuated::Punctuated<ProtocolMessageFnArg, syn::Token![,]>,
     pub output: syn::ReturnType,
 }
 
-impl Parse for TraitItem {
+impl Parse for ProtocolMessage {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let _: syn::Token![fn] = input.parse()?;
         let ident: syn::Ident = input.parse()?;
@@ -51,7 +54,7 @@ impl Parse for TraitItem {
     }
 }
 
-impl ToTokens for TraitItem {
+impl ToTokens for ProtocolMessage {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self {
             ident,
@@ -65,12 +68,12 @@ impl ToTokens for TraitItem {
 }
 
 #[derive(Debug)]
-pub struct FnArg {
+pub struct ProtocolMessageFnArg {
     pub ident: syn::Ident,
     pub ty: syn::Type,
 }
 
-impl Parse for FnArg {
+impl Parse for ProtocolMessageFnArg {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let ident: syn::Ident = input.parse()?;
         let _: syn::Token![:] = input.parse()?;
@@ -79,7 +82,7 @@ impl Parse for FnArg {
     }
 }
 
-impl ToTokens for FnArg {
+impl ToTokens for ProtocolMessageFnArg {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { ident, ty, .. } = self;
         tokens.extend(quote! {
@@ -88,20 +91,13 @@ impl ToTokens for FnArg {
     }
 }
 
-pub fn message_struct_name(item: &TraitItem) -> Ident {
-    format_ident!(
-        "{}ParamMessage",
-        item.ident.to_string().to_case(Case::Pascal)
-    )
-}
-
-pub fn build(item: TokenStream) -> TokenStream {
-    let root = syn::parse2::<Root>(item)
+pub fn build(input: TokenStream) -> TokenStream {
+    let protocol = syn::parse2::<Protocol>(input)
         .expect("Wrong syntax. An fully valid trait declaration is expected");
 
-    let message_enum = enum_message::build(&root);
-    let client = client::build(&root);
-    let handler = handler::build(&root);
+    let message_enum = enum_message::build(&protocol);
+    let client = client::build(&protocol);
+    let handler = handler::build(&protocol);
 
     quote! {
         #message_enum
