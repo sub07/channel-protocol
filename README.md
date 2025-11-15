@@ -10,7 +10,18 @@ You can use function oriented communication between threads instead of communica
 
 This is an abstraction over channels that makes inter-thread communication easier to use and read.
 
+## Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+channel-protocol = "*"
+oneshot = { version = "0.1", features = ["std"], default-features = false } # Used for returned values
+```
+
 ## Features
+
 - [x] std sync channel
 - [ ] async channel (contribution are welcomed)
 

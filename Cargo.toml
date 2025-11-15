@@ -18,7 +18,7 @@ proc-macro2 = "1"
 syn = { version = "2", features = ["extra-traits"] }
 itertools = "0"
 convert_case = "0.8"
-oneshot = { version = "0.1", features = ["std"], default-features = false }
 
 [dev-dependencies]
 winit = "0.30"
+oneshot = { version = "0.1", features = ["std"], default-features = false }
